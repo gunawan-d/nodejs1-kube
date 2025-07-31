@@ -3,8 +3,8 @@ pipeline {
 
     parameters {
         string(name: 'REPO_NAME', defaultValue: 'nodejs1-kube', description: 'Nama repo untuk Docker image (misal: nodejs1-kube)')
-        string(name: 'BRANCH', defaultValue: 'master', description: 'Branch untuk build (contoh: master, develop)')
-        string(name: 'TAG', defaultValue: '', description: 'Tag opsional untuk build (contoh: v1.0.0), kosongkan jika tidak pakai tag')
+        string(name: 'BRANCH', defaultValue: 'master', description: 'Branch untuk checkout (contoh: master, develop)')
+        string(name: 'TAG', defaultValue: '', description: 'Tag Docker opsional (contoh: v1.0.0), kosongkan kalau mau pakai nama branch')
     }
 
     environment {
@@ -15,24 +15,15 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    // URL Git dinamis dari parameter REPO_NAME
+                    // URL Git dinamis
                     def repoUrl = "https://github.com/gunawan-d/${params.REPO_NAME}.git"
 
-                    // if (params.TAG?.trim()) {
-                    //     // Checkout tag
-                    //     checkout([
-                    //         $class: 'GitSCM',
-                    //         branches: [[name: "refs/tags/${params.TAG}"]],
-                    //         userRemoteConfigs: [[url: repoUrl]]
-                    //     ])
-                    } else {
-                        // Checkout branch
-                        checkout([
-                            $class: 'GitSCM',
-                            branches: [[name: "${params.BRANCH}"]],
-                            userRemoteConfigs: [[url: repoUrl]]
-                        ])
-                    }
+                    // Checkout selalu berdasarkan BRANCH
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: "${params.BRANCH}"]],
+                        userRemoteConfigs: [[url: repoUrl]]
+                    ])
                 }
             }
         }
@@ -40,9 +31,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    // Tentukan tag Docker: pakai TAG kalau diisi, kalau kosong pakai BRANCH
+                    // Docker tag = parameter TAG jika diisi, kalau kosong fallback ke BRANCH
                     def dockerTag = params.TAG?.trim() ? params.TAG : params.BRANCH
-                    def safeTag = dockerTag.replaceAll('/', '-') // handle nama branch yg ada '/'
+                    def safeTag = dockerTag.replaceAll('/', '-') // sanitize jika ada '/'
                     def imageTag = "gunawand/${params.REPO_NAME}:${safeTag}"
 
                     sh """
