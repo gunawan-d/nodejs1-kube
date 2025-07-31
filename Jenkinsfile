@@ -8,24 +8,29 @@ pipeline {
     }
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('gunawand') // Jenkins credential ID
+        DOCKERHUB_CREDENTIALS = credentials('gunawand') // Jenkins credential ID DockerHub
     }
 
     stages {
         stage('Checkout') {
             steps {
                 script {
-                    if (params.TAG?.trim()) {
-                        checkout([
-                            $class: 'GitSCM',
-                            branches: [[name: "refs/tags/${params.TAG}"]],
-                            userRemoteConfigs: [[url: 'https://github.com/gunawan-d/${params.REPO_NAME}.git']]
-                        ])
+                    // URL Git dinamis dari parameter REPO_NAME
+                    def repoUrl = "https://github.com/gunawan-d/${params.REPO_NAME}.git"
+
+                    // if (params.TAG?.trim()) {
+                    //     // Checkout tag
+                    //     checkout([
+                    //         $class: 'GitSCM',
+                    //         branches: [[name: "refs/tags/${params.TAG}"]],
+                    //         userRemoteConfigs: [[url: repoUrl]]
+                    //     ])
                     } else {
+                        // Checkout branch
                         checkout([
                             $class: 'GitSCM',
                             branches: [[name: "${params.BRANCH}"]],
-                            userRemoteConfigs: [[url: 'https://github.com/gunawan-d/${params.REPO_NAME}.git']]
+                            userRemoteConfigs: [[url: repoUrl]]
                         ])
                     }
                 }
@@ -35,9 +40,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    // Tentukan tag Docker: kalau TAG diisi → pakai TAG, kalau kosong → pakai BRANCH
+                    // Tentukan tag Docker: pakai TAG kalau diisi, kalau kosong pakai BRANCH
                     def dockerTag = params.TAG?.trim() ? params.TAG : params.BRANCH
-                    def safeTag = dockerTag.replaceAll('/', '-')
+                    def safeTag = dockerTag.replaceAll('/', '-') // handle nama branch yg ada '/'
                     def imageTag = "gunawand/${params.REPO_NAME}:${safeTag}"
 
                     sh """
@@ -58,10 +63,10 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                sh '''
-                echo "Deploying gunawand/${REPO_NAME}:${TAG ?: BRANCH}"
+                sh """
+                echo "Deploying gunawand/${params.REPO_NAME}:${params.TAG ?: params.BRANCH}"
                 # Tambahkan perintah deploy sesuai kebutuhan (kubectl / docker-compose)
-                '''
+                """
             }
         }
     }
